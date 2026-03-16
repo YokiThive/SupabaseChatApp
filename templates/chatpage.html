@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Chat</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: sans-serif;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            background: #f5f5f5;
+        }
+
+        nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 20px;
+            background: #fff;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .profile {
+            display: flex;
+            flex-direction: column;
+            font-size: 0.8rem;
+            color: #555;
+        }
+
+        .profile span:first-child {
+            font-weight: bold;
+            color: #222;
+        }
+
+        .btn-logout {
+            font-size: 0.85rem;
+            padding: 6px 14px;
+            background: #fff;
+            border: 1px solid #f44;
+            color: #f44;
+            border-radius: 6px;
+            text-decoration: none;
+        }
+        .btn-logout:hover { background: #f44; color: #fff; }
+
+        .chat-wrap {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .msg {
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+            font-size: 0.88rem;
+        }
+
+        .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-top: 5px;
+            flex-shrink: 0;
+        }
+        .sent .dot { background: #2ecc71; }
+        .recv .dot { background: #3498db; }
+
+        .msg-body { display: flex; flex-direction: column; gap: 2px; }
+        .msg-meta { display: flex; gap: 8px; align-items: baseline; }
+        .msg-name { font-weight: bold; font-size: 0.8rem; color: #333; }
+        .msg-time { font-size: 0.72rem; color: #aaa; }
+        .msg-text { color: #333; line-height: 1.5; }
+
+        .input-bar {
+            display: flex;
+            gap: 8px;
+            padding: 12px 20px;
+            background: #fff;
+            border-top: 1px solid #ddd;
+        }
+
+        .input-bar input {
+            flex: 1;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 0.88rem;
+            outline: none;
+        }
+        .input-bar input:focus { border-color: #3498db; }
+
+        .btn-send {
+            padding: 8px 18px;
+            background: #3498db;
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.88rem;
+            cursor: pointer;
+        }
+        .btn-send:hover { background: #2980b9; }
+    </style>
+</head>
+<body>
+
+<nav>
+    <div class="profile">
+        <span>{{ session.get('username', 'User') }}</span>
+        <span>{{ session.get('user', '') }}</span>
+    </div>
+    <a href="{{ url_for('logout') }}" class="btn-logout">Logout</a>
+</nav>
+
+<div class="chat-wrap">
+    {% for msg in messages %}
+    <div class="msg {{ 'sent' if msg.sender == session.get('user') else 'recv' }}">
+        <div class="dot"></div>
+        <div class="msg-body">
+            <div class="msg-meta">
+                <span class="msg-name">{{ msg.sender_name }}</span>
+                <span class="msg-time">{{ msg.created_at }}</span>
+            </div>
+            <div class="msg-text">{{ msg.content }}</div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<div class="input-bar">
+    <form method="POST" action="/chatpage" style="display:flex; gap:8px; flex:1;">
+        <input type="text" name="message" placeholder="Type a message..." autocomplete="off" required/>
+        <button type="submit" class="btn-send">Send</button>
+    </form>
+</div>
+
+<!--loads supabase-js from CDN by creating browser client with project url and anon key-->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+    const currentUser = {{ session.get('user', '') | tojson }};
+    const supabaseUrl = {{ supabase_url | tojson }};
+    const supabaseAnonKey = {{ supabase_anon_key | tojson }};
+
+    const client = window.supabase.createClient(supabaseUrl, supabaseAnonKey);
+    const chatWrap = document.getElementById("chatWrap");
+
+    function scrollToBottom() {
+        chatWrap.scrollTop = chatWrap.scrollHeight;
+    }
+
+    function formatTime(timestamp) {
+        const date = new Date(timestamp);
+        return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    }
+
+    function appendMessage(msg) {
+        const wrapper = document.createElement("div");
+        wrapper.className = `msg ${msg.sender === currentUser ? "sent" : "recv"}`;
+
+        wrapper.innerHTML =
+        `<div class="dot"></div>
+            <div class="msg-body">
+                <div class="msg-meta">
+                    <span class="msg-name"></span>
+                    <span class="msg-time"></span>
+                </div>
+                <div class="msg-text"></div>
+            </div>`;
+
+        wrapper.querySelector(".msg-name").textContent = msg.sender_name;
+        wrapper.querySelector(".msg-time").textContent = formatTime(msg.created_at);
+        wrapper.querySelector(".msg-text").textContent = msg.content;
+
+        chatWrap.appendChild(wrapper);
+        scrollToBottom();
+    }
+
+    scrollToBottom();
+    client
+        .channel("messages-live")
+        .on(
+            "postgres_changes",
+            {
+                event: "INSERT",
+                schema: "public",
+                table: "messages"
+            },
+            (payload) => {
+                appendMessage(payload.new);
+            }
+        ).subscribe();
+</script>
+</body>
+</html>
