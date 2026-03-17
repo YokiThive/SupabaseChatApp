@@ -195,7 +195,7 @@
     const chatWrap = document.getElementById("chatWrap");
 
     function scrollToBottom() {
-        chatWrap.scrollTop = chatWrap.scrollHeight;
+        chatWrap.scrollTo({ top: chatWrap.scrollHeight, behavior: "smooth" });
     }
 
     function formatTime(timestamp) {
@@ -264,8 +264,6 @@
         }
     }
 
-    scrollToBottom();
-
     client
         .channel("messages-live")
         .on(
@@ -279,9 +277,16 @@
                 appendMessage(payload.new);
             }
         )
-        .subscribe();
+    //re-sync on reconnect
+    .subscribe((status) => {
+        if (status === "SUBSCRIBED") {
+            loadMessages();
+        }
+    });
 
-    setInterval(loadMessages, 2000);
+    document.addEventListener("DOMContentLoaded", () => {
+        scrollToBottom();
+    });
 </script>
 <script>
     const form = document.getElementById("chatForm");

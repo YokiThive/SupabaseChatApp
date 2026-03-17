@@ -29,6 +29,7 @@ def login():
             session["user"] = response.user.email
             session["user_id"] = response.user.id
             session["username"] = response.user.user_metadata.get("username", "User")
+            session["access_token"] = response.session.access_token
             return redirect(url_for("chat_page"))
 
         except Exception:
@@ -72,6 +73,12 @@ def register():
         redirect_url=url_for("auth_callback", _external=True)
     )
 
+def format_messages(messages):
+    for msg in messages:
+        date = datetime.fromisoformat(msg["created_at"].replace("Z", "+00:00"))
+        msg["created_at"] = date.strftime("%H:%M") #5:20 time
+    return messages
+
 @app.route("/chatpage")
 def chat_page():
     if "user" not in session: #if not logged in, don't give access
@@ -80,11 +87,7 @@ def chat_page():
     #fetch all messages, ordered by timestamp
     #use 'limit' for loading the newest num of messages
     response = supabase.table("messages").select("*").order("created_at").limit(100).execute()
-    messages = response.data if response.data else [] #if no messages then use empty list
-    for msg in messages:
-        timestamp = msg["created_at"]
-        date = datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
-        msg["created_at"] = date.strftime("%H:%M") #5:20 time
+    messages = format_messages(response.data if response.data else []) #if no messages then use empty list
 
     return render_template(
         "chatpage.html",
@@ -122,13 +125,7 @@ def get_messages():
         return jsonify({"error": "Not authenticated"}), 401
 
     response = supabase.table("messages").select("*").order("created_at").limit(100).execute()
-    messages = response.data if response.data else []
-
-    for msg in messages:
-        timestamp = msg["created_at"]
-        date = datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
-        msg["created_at"] = date.strftime("%H:%M")
-
+    messages = format_messages(response.data if response.data else [])
     return jsonify(messages)
 
 @app.route("/google-session", methods=["POST"])
@@ -148,6 +145,13 @@ def auth_callback():
 
 @app.route("/logout")
 def logout():
+    #doesn't hold user's token, so won't invalidate their session -> need to pass their token
+    try:
+        access_token = session.get("access_token")
+        if access_token:
+            supabase.auth.admin.sign_out(access_token)
+    except Exception:
+        pass
     session.clear()
     return redirect(url_for("login"))
 
