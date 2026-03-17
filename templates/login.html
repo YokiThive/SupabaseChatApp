@@ -49,8 +49,9 @@
         <!--Use script for js file-->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
-        const supabaseUrl = "{{ supabase_url }}";
-        const supabaseAnonKey = "{{ supabase_anon_key }}";
+        const supabaseUrl = {{ supabase_url | tojson }};
+        const supabaseAnonKey = {{ supabase_anon_key | tojson }};
+        const redirectUrl = {{ redirect_url | tojson }};
 
         const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseAnonKey);
 
@@ -58,7 +59,7 @@
             const { error } = await supabaseClient.auth.signInWithOAuth({
                 provider: "google",
                 options: {
-                    redirectTo: "{{ redirect_url }}"
+                    redirectTo: redirectUrl
                 }
             });
 
