@@ -161,7 +161,7 @@
     <a href="{{ url_for('logout') }}" class="btn-logout">Logout</a>
 </nav>
 
-<div class="chat-wrap">
+<div class="chat-wrap" id="chatWrap">
     {% for msg in messages %}
     <div class="msg {{ 'sent' if msg.sender == session.get('user') else 'recv' }}">
         <div class="msg-body">
@@ -204,20 +204,25 @@
     }
 
     function appendMessage(msg) {
-        const wrapper = document.createElement("div");
-        wrapper.className = `msg ${msg.sender === currentUser ? "sent" : "recv"}`;
+        const isSent = msg.sender === currentUser;
 
-        wrapper.innerHTML =
-        `<div class="dot"></div>
+        const wrapper = document.createElement("div");
+        wrapper.className = `msg ${isSent ? "sent" : "recv"}`;
+
+        wrapper.innerHTML = `
             <div class="msg-body">
                 <div class="msg-meta">
-                    <span class="msg-name"></span>
+                    ${!isSent ? `<span class="msg-name"></span>` : ``}
                     <span class="msg-time"></span>
                 </div>
                 <div class="msg-text"></div>
-            </div>`;
+            </div>
+        `;
 
-        wrapper.querySelector(".msg-name").textContent = msg.sender_name;
+        if (!isSent) {
+            wrapper.querySelector(".msg-name").textContent = msg.sender_name;
+        }
+
         wrapper.querySelector(".msg-time").textContent = formatTime(msg.created_at);
         wrapper.querySelector(".msg-text").textContent = msg.content;
 
@@ -225,7 +230,42 @@
         scrollToBottom();
     }
 
+    async function loadMessages() {
+        try {
+            const response = await fetch("/get-messages");
+            if (!response.ok) return;
+
+            const messages = await response.json();
+            chatWrap.innerHTML = "";
+
+            messages.forEach(msg => {
+                const isSent = msg.sender === currentUser;
+
+                const wrapper = document.createElement("div");
+                wrapper.className = `msg ${isSent ? "sent" : "recv"}`;
+
+                wrapper.innerHTML = `
+                    <div class="msg-body">
+                        <div class="msg-meta">
+                            ${!isSent ? `<span class="msg-name">${msg.sender_name}</span>` : ``}
+                            <span class="msg-time">${msg.created_at}</span>
+                        </div>
+                        <div class="msg-text"></div>
+                    </div>
+                `;
+
+                wrapper.querySelector(".msg-text").textContent = msg.content;
+                chatWrap.appendChild(wrapper);
+            });
+
+            scrollToBottom();
+        } catch (error) {
+            console.error("Failed to load messages:", error);
+        }
+    }
+
     scrollToBottom();
+
     client
         .channel("messages-live")
         .on(
@@ -238,7 +278,10 @@
             (payload) => {
                 appendMessage(payload.new);
             }
-        ).subscribe();
+        )
+        .subscribe();
+
+    setInterval(loadMessages, 2000);
 </script>
 <script>
     const form = document.getElementById("chatForm");

@@ -116,6 +116,21 @@ def send_message():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@app.route("/get-messages")
+def get_messages():
+    if "user" not in session:
+        return jsonify({"error": "Not authenticated"}), 401
+
+    response = supabase.table("messages").select("*").order("created_at").limit(100).execute()
+    messages = response.data if response.data else []
+
+    for msg in messages:
+        timestamp = msg["created_at"]
+        date = datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
+        msg["created_at"] = date.strftime("%H:%M")
+
+    return jsonify(messages)
+
 @app.route("/google-session", methods=["POST"])
 def google_session():
     data = request.get_json()
