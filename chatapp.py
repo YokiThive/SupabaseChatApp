@@ -10,6 +10,12 @@ app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY")
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+app.config["SESSION_COOKIE_SECURE"] = True
+app.config["SESSION_COOKIE_HTTPONLY"] = True
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+
+if not SUPABASE_URL or not SUPABASE_KEY:
+    raise ValueError("Missing SUPABASE_URL or SUPABASE_KEY env var")
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
@@ -31,9 +37,9 @@ def login():
 
     return render_template(
         "login.html",
-        supabase_url=os.getenv("SUPABASE_URL"),
-        supabase_anon_key=os.getenv("SUPABASE_KEY"),
-        redirect_url="http://127.0.0.1:5000/auth/callback")
+        supabase_url=SUPABASE_URL,
+        supabase_anon_key=SUPABASE_KEY,
+        redirect_url=url_for("auth_callback", _external=True))
 
 #confirm email disabled
 @app.route('/register', methods=["GET", "POST"])
@@ -59,21 +65,18 @@ def register():
             flash(str(e))
             return redirect(url_for("register"))
 
-    return render_template("register.html")
+    return render_template(
+        "register.html",
+        supabase_url=SUPABASE_URL,
+        supabase_anon_key=SUPABASE_KEY,
+        redirect_url=url_for("auth_callback", _external=True)
+    )
 
-@app.route("/chatpage", methods=["GET", "POST"])
+@app.route("/chatpage")
 def chat_page():
     if "user" not in session: #if not logged in, don't give access
         return redirect(url_for("login"))
-    if request.method == "POST": #user msg sent
-        message = request.form["message"].strip() #remove extra space from start and end
-        if message:
-            supabase.table("messages").insert({
-                "sender": session["user"],
-                "sender_name": session["username"],
-                "content": message
-            }).execute()
-        return redirect(url_for("chat_page"))
+
     #fetch all messages, ordered by timestamp
     #use 'limit' for loading the newest num of messages
     response = supabase.table("messages").select("*").order("created_at").limit(100).execute()
@@ -82,12 +85,36 @@ def chat_page():
         timestamp = msg["created_at"]
         date = datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
         msg["created_at"] = date.strftime("%H:%M") #5:20 time
+
     return render_template(
         "chatpage.html",
         messages=messages,
-        supabase_url=os.getenv("SUPABASE_URL"),
-        supabase_anon_key=os.getenv("SUPABASE_KEY")
+        supabase_url=SUPABASE_URL,
+        supabase_anon_key=SUPABASE_KEY
     )
+
+@app.route("/send-message", methods=["POST"])
+def send_message():
+    if "user" not in session:
+        return jsonify({"error": "Not authenticated"}), 401
+
+    #checks login, empty message, max length, inserts, and finally returns JSON
+    data = request.get_json()
+    message = data.get("message", "").strip()
+    if not message:
+        return jsonify({"error": "Message is required"}), 400
+    if len(message) > 500:
+        return jsonify({"error": "Message is too long"}), 400
+
+    try:
+        supabase.table("messages").insert({
+            "sender": session["user"],
+            "sender_name": session["username"],
+            "content": message
+        }).execute()
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 @app.route("/google-session", methods=["POST"])
 def google_session():
@@ -107,8 +134,7 @@ def auth_callback():
 @app.route("/logout")
 def logout():
     session.clear()
-    supabase.auth.sign_out()
     return redirect(url_for("login"))
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run()

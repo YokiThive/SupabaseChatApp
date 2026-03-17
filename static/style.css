@@ -83,3 +83,7 @@ button {
 .google-login .btn-submit {
     width: 100%;
 }
+
+.msg.sent .msg-meta {
+    justify-content: flex-end;
+}

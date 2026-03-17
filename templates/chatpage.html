@@ -58,26 +58,68 @@
 
         .msg {
             display: flex;
-            align-items: flex-start;
+            width: 100%;
+        }
+
+        .msg.sent {
+            justify-content: flex-end;
+        }
+
+        .msg.recv {
+            justify-content: flex-start;
+        }
+
+        .msg-body {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            max-width: 70%;
+            padding: 10px 12px;
+            border-radius: 12px;
+            word-wrap: break-word;
+        }
+
+        .msg.sent .msg-body {
+            background: #3498db;
+            color: white;
+            border-bottom-right-radius: 4px;
+        }
+
+        .msg.recv .msg-body {
+            background: #ffffff;
+            color: #333;
+            border: 1px solid #ddd;
+            border-bottom-left-radius: 4px;
+        }
+
+        .msg-meta {
+            display: flex;
             gap: 8px;
-            font-size: 0.88rem;
+            align-items: baseline;
+            margin-bottom: 2px;
+        }
+
+        .msg-name {
+            font-weight: bold;
+            font-size: 0.8rem;
+        }
+
+        .msg-time {
+            font-size: 0.72rem;
+            color: #aaa;
+        }
+
+        .msg.sent .msg-time {
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        .msg-text {
+            line-height: 1.5;
         }
 
         .dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            margin-top: 5px;
-            flex-shrink: 0;
+            display: none;
         }
-        .sent .dot { background: #2ecc71; }
-        .recv .dot { background: #3498db; }
-
-        .msg-body { display: flex; flex-direction: column; gap: 2px; }
-        .msg-meta { display: flex; gap: 8px; align-items: baseline; }
-        .msg-name { font-weight: bold; font-size: 0.8rem; color: #333; }
-        .msg-time { font-size: 0.72rem; color: #aaa; }
-        .msg-text { color: #333; line-height: 1.5; }
 
         .input-bar {
             display: flex;
@@ -122,10 +164,11 @@
 <div class="chat-wrap">
     {% for msg in messages %}
     <div class="msg {{ 'sent' if msg.sender == session.get('user') else 'recv' }}">
-        <div class="dot"></div>
         <div class="msg-body">
             <div class="msg-meta">
-                <span class="msg-name">{{ msg.sender_name }}</span>
+                {% if msg.sender != session.get('user') %}
+                    <span class="msg-name">{{ msg.sender_name }}</span>
+                {% endif %}
                 <span class="msg-time">{{ msg.created_at }}</span>
             </div>
             <div class="msg-text">{{ msg.content }}</div>
@@ -135,8 +178,8 @@
 </div>
 
 <div class="input-bar">
-    <form method="POST" action="/chatpage" style="display:flex; gap:8px; flex:1;">
-        <input type="text" name="message" placeholder="Type a message..." autocomplete="off" required/>
+    <form id="chatForm" style="display:flex; gap:8px; flex:1;">
+        <input id="messageInput" type="text" placeholder="Type a message..." autocomplete="off" required/>
         <button type="submit" class="btn-send">Send</button>
     </form>
 </div>
@@ -196,6 +239,34 @@
                 appendMessage(payload.new);
             }
         ).subscribe();
+</script>
+<script>
+    const form = document.getElementById("chatForm");
+    const input = document.getElementById("messageInput");
+
+    form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+
+        const message = input.value.trim();
+        if (!message) return;
+
+        const response = await fetch("/send-message", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ message: message })
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+            input.value = "";
+            input.focus();
+        } else {
+            alert(result.error || "Failed to send message");
+        }
+    });
 </script>
 </body>
 </html>
