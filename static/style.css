@@ -230,3 +230,15 @@ button {
     font-size: 13px;
     margin-bottom: 8px;
 }
+
+#forgotMsg.success {
+    background: #e6f4ea;
+    border: 1px solid #a8d5b5;
+    color: #1e6e3a;
+}
+
+#forgotMsg.error {
+    background: #fdecea;
+    border: 1px solid #f5c6c6;
+    color: #a61c00;
+}

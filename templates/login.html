@@ -12,7 +12,7 @@
                 <div class="form-container active" id="LoginForm">
                     <div class="form-header">
                         <h1>Yoki's Chat App</h1>
-                        <p>Sign in to your account</p>
+                        <p id="formSubtitle">Sign in to your account</p>
                     </div>
                     {% with messages = get_flashed_messages() %}
                         {% if messages %}
@@ -23,28 +23,42 @@
                             </div>
                         {% endif %}
                     {% endwith %}
-                    <form id="loginFormSubmit" method="POST" action="/">
-                        <div class="form-group">
-                            <label for="email">Email Address</label>
-                            <input type="email" id="email" name="email" class="form-control" placeholder="you@example.com" required>
+                    <div id="loginPanel">
+                        <form id="loginFormSubmit" method="POST" action="/">
+                            <div class="form-group">
+                                <label for="email">Email Address</label>
+                                <input type="email" id="email" name="email" class="form-control" placeholder="you@example.com" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="password">Password</label>
+                                <input type="password" id="password" name="password" class="form-control" placeholder="••••••••" required>
+                            </div>
+                            <div class="forgot-pass">
+                                <a href="#" onclick="showForgotPassword(); return false;">Forgot password?</a>
+                            </div>
+                            <button class="btn-submit" type="submit">Sign In</button>
+                        </form>
+                        <div class="divider"><span>or</span></div>
+                        <div class="google-login">
+                            <button type="button" class="btn-google" onclick="signInWithGoogle()">
+                                <svg width="18" height="18" viewBox="0 0 48 48" style="vertical-align:middle; margin-right:8px;"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/><path fill="none" d="M0 0h48v48H0z"/></svg>
+                                Continue with Google
+                            </button>
                         </div>
-                        <div class="form-group">
-                            <label for="password">Password</label>
-                            <input type="password" id="password" name="password" class="form-control" placeholder="••••••••" required>
-                        </div>
-                        <div class="forgot-pass">
-                            <a href="#" onclick="showForgotPassword()">Forgot password?</a>
-                        </div>
-                        <button class="btn-submit" type="submit">Sign In</button>
-                    </form>
-                    <div class="divider"><span>or</span></div>
-                    <div class="google-login">
-                        <button type="button" class="btn-google" onclick="signInWithGoogle()">
-                            <svg width="18" height="18" viewBox="0 0 48 48" style="vertical-align:middle; margin-right:8px;"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/><path fill="none" d="M0 0h48v48H0z"/></svg>
-                            Continue with Google
-                        </button>
+                        <p class="register">Don't have an account? <a href="/register" class="register-link">Register</a></p>
                     </div>
-                    <p class="register">Don't have an account? <a href="/register" class="register-link">Register</a></p>
+                    <div id="forgotPanel" style="display:none;">
+                        <div id="forgotMsg" style="display:none;" class="flash-message"></div>
+                        <p style="font-size:13px; color:#888; margin-bottom:20px;">Enter your email and we'll send you a reset link.</p>
+                        <div class="form-group">
+                            <label for="resetEmail">Email Address</label>
+                            <input type="email" id="resetEmail" class="form-control" placeholder="you@example.com">
+                        </div>
+                        <button class="btn-submit" onclick="sendResetEmail()">Send Reset Link</button>
+                        <p class="register" style="margin-top:16px;">
+                            <a href="#" onclick="showLogin(); return false;" class="register-link">← Back to sign in</a>
+                        </p>
+                    </div>
                 </div>
             </div>
         </div>
@@ -57,17 +71,50 @@
 
         const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseAnonKey);
 
-        async function signInWithGoogle() {
-            const { error } = await supabaseClient.auth.signInWithOAuth({
-                provider: "google",
-                options: {
-                    redirectTo: redirectUrl
-                }
+        function showForgotPassword() {
+            document.getElementById("loginPanel").style.display = "none";
+            document.getElementById("forgotPanel").style.display = "block";
+            document.getElementById("formSubtitle").textContent = "Reset your password";
+        }
+
+        function showLogin() {
+            document.getElementById("forgotPanel").style.display = "none";
+            document.getElementById("loginPanel").style.display = "block";
+            document.getElementById("formSubtitle").textContent = "Sign in to your account";
+            document.getElementById("forgotMsg").style.display = "none";
+        }
+
+        async function sendResetEmail() {
+            const email = document.getElementById("resetEmail").value.trim();
+            const msg = document.getElementById("forgotMsg");
+
+            if (!email) {
+                msg.textContent = "Please enter your email address.";
+                msg.className = "flash-message error";
+                msg.style.display = "block";
+                return;
+            }
+
+            const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
+                redirectTo: redirectUrl
             });
 
             if (error) {
-                alert(error.message);
+                msg.textContent = error.message;
+                msg.className = "flash-message error";
+            } else {
+                msg.textContent = "Reset link sent — check your inbox.";
+                msg.className = "flash-message success";
             }
+            msg.style.display = "block";
+        }
+
+        async function signInWithGoogle() {
+            const { error } = await supabaseClient.auth.signInWithOAuth({
+                provider: "google",
+                options: { redirectTo: redirectUrl }
+            });
+            if (error) alert(error.message);
         }
     </script>
     </body>
