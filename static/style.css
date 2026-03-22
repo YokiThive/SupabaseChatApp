@@ -87,3 +87,146 @@ button {
 .msg.sent .msg-meta {
     justify-content: flex-end;
 }
+
+.container {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f5f5f5;
+    padding: 20px;
+}
+
+.form-sec {
+    width: 100%;
+    max-width: 420px;
+}
+
+.form-container {
+    background: #ffffff;
+    border-radius: 16px;
+    padding: 40px;
+    border: 1px solid #e8e8e8;
+}
+
+.form-header {
+    text-align: center;
+    margin-bottom: 28px;
+}
+
+.form-header h1 {
+    font-size: 22px;
+    font-weight: 700;
+    color: #1a1a1a;
+    margin: 0 0 6px;
+}
+
+.form-header p {
+    font-size: 14px;
+    color: #888;
+    margin: 0;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 16px;
+}
+
+.form-group label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #444;
+}
+
+.form-control {
+    padding: 10px 14px;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.2s;
+    background: #fafafa;
+}
+
+.form-control:focus {
+    border-color: #3498db;
+    background: #fff;
+}
+
+.forgot-pass {
+    text-align: right;
+    margin-bottom: 8px;
+}
+
+.forgot-pass a {
+    font-size: 13px;
+    color: #3498db;
+    text-decoration: none;
+}
+
+.btn-submit {
+    width: 100%;
+    padding: 11px;
+    background: #3498db;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+    margin-top: 4px;
+}
+
+.btn-submit:hover {
+    background: #2980b9;
+}
+
+.divider {
+    text-align: center;
+    margin: 16px 0;
+    position: relative;
+    color: #bbb;
+    font-size: 13px;
+}
+
+.divider::before, .divider::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    width: 44%;
+    height: 1px;
+    background: #e8e8e8;
+}
+
+.divider::before { left: 0; }
+.divider::after { right: 0; }
+
+.register {
+    text-align: center;
+    font-size: 13px;
+    color: #888;
+    margin-top: 20px;
+}
+
+.register-link {
+    color: #3498db;
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.flash-messages {
+    margin-bottom: 16px;
+}
+
+.flash-message {
+    background: #fff8e1;
+    border: 1px solid #ffe082;
+    color: #7a6200;
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-size: 13px;
+    margin-bottom: 8px;
+}

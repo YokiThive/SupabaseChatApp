@@ -73,12 +73,6 @@ def register():
         redirect_url=url_for("auth_callback", _external=True)
     )
 
-def format_messages(messages):
-    for msg in messages:
-        date = datetime.fromisoformat(msg["created_at"].replace("Z", "+00:00"))
-        msg["created_at"] = date.strftime("%H:%M") #5:20 time
-    return messages
-
 @app.route("/chatpage")
 def chat_page():
     if "user" not in session: #if not logged in, don't give access
@@ -87,7 +81,7 @@ def chat_page():
     #fetch all messages, ordered by timestamp
     #use 'limit' for loading the newest num of messages
     response = supabase.table("messages").select("*").order("created_at").limit(100).execute()
-    messages = format_messages(response.data if response.data else []) #if no messages then use empty list
+    messages = response.data if response.data else [] #if no messages then use empty list
 
     return render_template(
         "chatpage.html",
@@ -101,11 +95,38 @@ def send_message():
     if "user" not in session:
         return jsonify({"error": "Not authenticated"}), 401
 
+    #image
+    image_url = None
+    if "image" in request.files:
+        file = request.files["image"]
+        if file.filename == "":
+            return jsonify({"error": "No file selected"}), 400
+
+        allowed_file_type = {"png", "jpg", "jpeg", "gif", "webp"}
+        ext = file.filename.rsplit(".", 1)[1].lower()
+
+        if ext not in allowed_file_type:
+            return jsonify({"error": "Invalid file type"}), 400
+
+        #max cap to 5MB
+        file_bytes = file.read()
+        if len(file_bytes) > 5 * 1024 * 1024:
+            return jsonify({"error": "Max file size is 5MB"}), 400
+
+        #filename using username, timestamp, and file extension
+        filename = f"{session['user']}_{int(datetime.now().timestamp())}.{ext}"
+        supabase.storage.from_("chat-images").upload(
+            path=filename,
+            file=file_bytes,
+            file_options={"content-type": file.content_type}
+        )
+        image_url = supabase.storage.from_("chat-images").get_public_url(filename)
+
+    #text messages
     #checks login, empty message, max length, inserts, and finally returns JSON
-    data = request.get_json()
-    message = data.get("message", "").strip()
-    if not message:
-        return jsonify({"error": "Message is required"}), 400
+    message = request.form.get("message", "").strip()
+    if not message and not image_url:
+        return jsonify({"error": "Message or image is required"}), 400
     if len(message) > 500:
         return jsonify({"error": "Message is too long"}), 400
 
@@ -113,7 +134,8 @@ def send_message():
         supabase.table("messages").insert({
             "sender": session["user"],
             "sender_name": session["username"],
-            "content": message
+            "content": message,
+            "image_url": image_url
         }).execute()
         return jsonify({"success": True})
     except Exception as e:
@@ -125,7 +147,7 @@ def get_messages():
         return jsonify({"error": "Not authenticated"}), 401
 
     response = supabase.table("messages").select("*").order("created_at").limit(100).execute()
-    messages = format_messages(response.data if response.data else [])
+    messages = response.data if response.data else []
     return jsonify(messages)
 
 @app.route("/google-session", methods=["POST"])

@@ -169,7 +169,7 @@
                 {% if msg.sender != session.get('user') %}
                     <span class="msg-name">{{ msg.sender_name }}</span>
                 {% endif %}
-                <span class="msg-time">{{ msg.created_at }}</span>
+                <span class="msg-time" data-time="{{ msg.created_at }}"></span>
             </div>
             <div class="msg-text">{{ msg.content }}</div>
         </div>
@@ -177,11 +177,24 @@
     {% endfor %}
 </div>
 
+<div id="imagePreview" style="display:none; padding: 8px 20px; background:#fff; border-top: 1px solid #ddd;">
+    <div style="display:flex; align-items:center; gap:10px; padding:8px; background:#f5f5f5; border-radius:8px; border:1px solid #ddd;">
+        <img id="previewThumb" style="width:56px; height:56px; object-fit:cover; border-radius:6px;" />
+        <div style="flex:1; min-width:0;">
+            <div id="previewName" style="font-size:13px; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"></div>
+            <div id="previewSize" style="font-size:12px; color:#888;"></div>
+        </div>
+        <button id="cancelImage" type="button" style="width:22px; height:22px; border-radius:50%; border:none; background:#fde8e8; color:#c0392b; font-size:12px; cursor:pointer; flex-shrink:0;">✕</button>
+    </div>
+</div>
+
 <div class="input-bar">
-    <form id="chatForm" style="display:flex; gap:8px; flex:1;">
-        <input id="messageInput" type="text" placeholder="Type a message..." autocomplete="off" required/>
-        <button type="submit" class="btn-send">Send</button>
-    </form>
+  <form id="chatForm" style="display:flex; gap:8px; flex:1;">
+    <label for="imageInput" style="cursor:pointer; display:flex; align-items:center; padding: 0 8px; border:1px solid #ddd; border-radius:6px; font-size:1.2rem;">🖼️</label>
+    <input id="imageInput" type="file" accept="image/*" style="display:none;" />
+    <input id="messageInput" type="text" placeholder="Type a message..." autocomplete="off" maxlength="500" />
+    <button type="submit" class="btn-send">Send</button>
+  </form>
 </div>
 
 <!--loads supabase-js from CDN by creating browser client with project url and anon key-->
@@ -194,8 +207,15 @@
     const client = window.supabase.createClient(supabaseUrl, supabaseAnonKey);
     const chatWrap = document.getElementById("chatWrap");
 
-    function scrollToBottom() {
-        chatWrap.scrollTo({ top: chatWrap.scrollHeight, behavior: "smooth" });
+    function isNearBottom() {
+        const threshold = 100;
+        return chatWrap.scrollHeight - chatWrap.scrollTop - chatWrap.clientHeight < threshold;
+    }
+
+    function scrollToBottom(force = false) {
+        if (force || isNearBottom()) {
+            chatWrap.scrollTo({ top: chatWrap.scrollHeight, behavior: "smooth" });
+        }
     }
 
     function formatTime(timestamp) {
@@ -226,11 +246,19 @@
         wrapper.querySelector(".msg-time").textContent = formatTime(msg.created_at);
         wrapper.querySelector(".msg-text").textContent = msg.content;
 
+        if (msg.image_url) {
+            const img = document.createElement("img");
+            img.src = msg.image_url;
+            img.style.cssText = "max-width:100%; max-height:280px; border-radius:8px; margin-top:6px; display:block; cursor:pointer;";
+            img.onclick = () => window.open(msg.image_url, "_blank");
+            wrapper.querySelector(".msg-body").appendChild(img);
+        }
+
         chatWrap.appendChild(wrapper);
-        scrollToBottom();
+        scrollToBottom(); //scrolls when already bottom
     }
 
-    async function loadMessages() {
+    async function loadMessages(forceScroll = false) {
         try {
             const response = await fetch("/get-messages");
             if (!response.ok) return;
@@ -248,17 +276,24 @@
                     <div class="msg-body">
                         <div class="msg-meta">
                             ${!isSent ? `<span class="msg-name">${msg.sender_name}</span>` : ``}
-                            <span class="msg-time">${msg.created_at}</span>
+                            <span class="msg-time">${formatTime(msg.created_at)}</span>
                         </div>
                         <div class="msg-text"></div>
                     </div>
                 `;
 
                 wrapper.querySelector(".msg-text").textContent = msg.content;
+                if (msg.image_url) {
+                    const img = document.createElement("img");
+                    img.src = msg.image_url;
+                    img.style.cssText = "max-width:100%; max-height:280px; border-radius:8px; margin-top:6px; display:block; cursor:pointer;";
+                    img.onclick = () => window.open(msg.image_url, "_blank");
+                    wrapper.querySelector(".msg-body").appendChild(img);
+                }
                 chatWrap.appendChild(wrapper);
             });
 
-            scrollToBottom();
+            scrollToBottom(forceScroll);
         } catch (error) {
             console.error("Failed to load messages:", error);
         }
@@ -280,36 +315,79 @@
     //re-sync on reconnect
     .subscribe((status) => {
         if (status === "SUBSCRIBED") {
-            loadMessages();
+            loadMessages(false); //doesn't force scroll
         }
     });
 
     document.addEventListener("DOMContentLoaded", () => {
-        scrollToBottom();
+        //format initial messages
+        document.querySelectorAll(".msg-time").forEach(el => {
+            const raw = el.getAttribute("data-time");
+            el.textContent = formatTime(raw);
+        });
+
+        scrollToBottom(true);
     });
 </script>
 <script>
     const form = document.getElementById("chatForm");
     const input = document.getElementById("messageInput");
+    const imageInput = document.getElementById("imageInput");
+    const imagePreview = document.getElementById("imagePreview");
+    const previewThumb = document.getElementById("previewThumb");
+    const previewName = document.getElementById("previewName");
+    const previewSize = document.getElementById("previewSize");
+    const cancelImage = document.getElementById("cancelImage");
+
+    function clearImagePreview() {
+        imageInput.value = "";
+        previewThumb.src = "";
+        imagePreview.style.display = "none";
+    }
+
+    imageInput.addEventListener("change", () => {
+        const file = imageInput.files[0];
+        if (!file) return;
+        previewThumb.src = URL.createObjectURL(file);
+        previewName.textContent = file.name;
+        previewSize.textContent = (file.size / 1024).toFixed(1) + " KB";
+        imagePreview.style.display = "block";
+    });
+
+    cancelImage.addEventListener("click", clearImagePreview);
+
+    //send on enter
+    input.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
+            form.requestSubmit();
+        }
+    });
 
     form.addEventListener("submit", async (e) => {
         e.preventDefault();
 
         const message = input.value.trim();
-        if (!message) return;
+        const file = imageInput.files[0];
+
+        //block if both empty
+        if (!message && !file) return;
+
+        const formData = new FormData();
+        if (message) formData.append("message", message);
+        if (file) formData.append("image", file);
 
         const response = await fetch("/send-message", {
             method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({ message: message })
+            body: formData
         });
 
         const result = await response.json();
 
         if (response.ok) {
+            //clear the file input
             input.value = "";
+            clearImagePreview();
             input.focus();
         } else {
             alert(result.error || "Failed to send message");
